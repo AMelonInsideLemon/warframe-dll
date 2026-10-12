@@ -14,6 +14,7 @@ struct MetadataPatch
 	std::vector<std::pair<std::string, std::string>> replacements;
 	std::vector<std::pair<soup::Regex, std::string>> substitutions;
 	std::vector<std::pair<std::string, std::string>> query_assignments;
+	std::vector<std::pair<std::string, std::string>> appends;
 
 	std::string final_data;
 	bool discard_original = false;

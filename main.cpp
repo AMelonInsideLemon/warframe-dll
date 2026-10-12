@@ -2033,6 +2033,16 @@ static void load_metadata_patches()
 	});
 	lua_setglobal(L, "add_query_assignment");
 
+	lua_pushcfunction(L, [](lua_State* L) -> int
+	{
+		if (current_patch)
+		{
+			current_patch->appends.emplace_back(pluto_checkstring(L, 1), pluto_checkstring(L, 2));
+		}
+		return 0;
+	});
+	lua_setglobal(L, "add_append");
+
 	size_t size;
 	auto data = g_repo.find(soup::joaat::compileTimeHash("OpenWF/helpers/load_metadata_patches.pluto"), size);
 	if (luaL_loadbuffer(L, data, size, nullptr) != LUA_OK
@@ -2092,7 +2102,7 @@ static void handle_metadata_read(ObjectType* objectType, Str* str)
 		buf.clear();
 		buf.reserve(patch.prefix.size() + str->getSize());
 		buf.append(patch.prefix);
-		if (patch.replacements.empty() && patch.substitutions.empty() && patch.query_assignments.empty())
+		if (patch.replacements.empty() && patch.substitutions.empty() && patch.query_assignments.empty() && patch.appends.empty())
 		{
 			if (!patch.discard_original)
 			{
@@ -2114,7 +2124,7 @@ static void handle_metadata_read(ObjectType* objectType, Str* str)
 			{
 				text = substitution.first.substituteAll(text, substitution.second);
 			}
-			if (!patch.query_assignments.empty())
+			if (!patch.query_assignments.empty() || !patch.appends.empty())
 			{
 				try
 				{
@@ -2155,11 +2165,43 @@ static void handle_metadata_read(ObjectType* objectType, Str* str)
 							conout << "[Metadata Patches] - Object Type: " << path << name << std::endl;
 						}
 					}
+					for (const auto& append : patch.appends)
+					{
+						if (UniquePtr<JsonNode>* upN = jr->queryUp(append.first.c_str()); upN && (*upN)->isArr())
+						{
+							auto& arr = (*upN)->reinterpretAsArr();
+							UniquePtr<JsonNode> value;
+							try
+							{
+								value = std::move(*EeNotationParser{}.parse("_=" + append.second + "\n")->findUp("_"));
+							}
+							catch (const std::exception& e)
+							{
+								conout << "[Metadata Patches] Error parsing append value " << append.second << ": " << e.what() << std::endl;
+								conout << "[Metadata Patches] - Object Type: " << path << name << std::endl;
+								continue;
+							}
+							if (!arr.children.empty() && arr.children[0]->getType() != value->getType())
+							{
+								conout << "[Metadata Patches] Can't append " << append.second << " to " << append.first << " because it doesn't match the type of its items" << std::endl;
+								conout << "[Metadata Patches] - Object Type: " << path << name << std::endl;
+							}
+							else
+							{
+								arr.children.emplace_back(std::move(value));
+							}
+						}
+						else if (patch.debug)
+						{
+							conout << "[Metadata Patches] " << append.first << " did not resolve to a list in " << path << name << std::endl;
+							conout << "[Metadata Patches] - Object Type: " << path << name << std::endl;
+						}
+					}
 					text = EeNotationParser::unparse(*jr);
 				}
 				catch (const std::exception& e)
 				{
-					conout << "[Metadata Patches] Error applying query assignment: " << e.what() << std::endl;
+					conout << "[Metadata Patches] Error applying query assignments or appends: " << e.what() << std::endl;
 					conout << "[Metadata Patches] - Object Type: " << path << name << std::endl;
 				}
 			}

@@ -6,13 +6,13 @@ end
 
 function parse_metadata_patches(str, filename)
 	local patches = {}
-	local patch = { keys = {}, prefix = "", replacements = {}, substitutions = {}, query_assignments = {} }
+	local patch = { keys = {}, prefix = "", replacements = {}, substitutions = {}, query_assignments = {}, appends = {} }
 	local ampersand = false
 	local function delimit_patch()
 		if #patch.keys ~= 0 then
 			patches:insert(patch)
 		end
-		patch = { keys = {}, prefix = "", replacements = {}, substitutions = {}, query_assignments = {} }
+		patch = { keys = {}, prefix = "", replacements = {}, substitutions = {}, query_assignments = {}, appends = {} }
 	end
 	local function is_in_patch_scope(linenum, line)
 		if #patch.keys == 0 then
@@ -91,6 +91,14 @@ function parse_metadata_patches(str, filename)
 			else
 				malformed_line(filename, linenum, line)
 			end
+		elseif line:startswith("a|") then
+			if sep := line:find("|", 3) then
+				if is_in_patch_scope(linenum, line) then
+					patch.appends:insert({ line:sub(3, sep - 1), line:sub(sep + 1):rstrip("|") })
+				end
+			else
+				malformed_line(filename, linenum, line)
+			end
 		elseif line:startswith("$") then
 			if is_in_patch_scope(linenum, line) then
 				for line:sub(2):split(";") as flag do
@@ -136,6 +144,9 @@ function load_metadata_patches(str, filename)
 			end
 			for k, v in patch.query_assignments do
 				add_query_assignment(k, v)
+			end
+			for patch.appends as append do
+				add_append(append[1], append[2])
 			end
 		end
 	end
