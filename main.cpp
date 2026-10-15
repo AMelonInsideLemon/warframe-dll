@@ -2262,6 +2262,8 @@ static void object_type_serialise_propery_text_field_detour(void* a1, Str* str, 
 
 	return reinterpret_cast<decltype(&object_type_serialise_propery_text_field_detour<Str>)>(object_type_serialise_propery_text_hook.original)(a1, &copy, a3, a4);
 }
+
+static CallsiteHook cache_header_serialise_propery_text_hook;
 #endif
 
 
@@ -4306,6 +4308,38 @@ static SOUP_FORCEINLINE void create_all_hooks()
 #endif
 			object_type_serialise_propery_text_hook.create();
 			object_type_serialise_propery_text_hook.enable();
+		}
+
+		if (game_version >= GV(22, 0, 0) && object_type_serialise_propery_text_hook.original)
+		{
+			// "] could not be built:"
+			SIG_INST("E8 ? ? ? ? ? 8B ? 08 48 8D 54 24 ? E8 ? ? ? ? ? 8B ? 08 48 8D 0D");
+			auto cache_header_serialise_propery_text_call = Module(nullptr).range.scan(sig_inst);
+#if LOGGING
+			conout << "cache_header_serialise_propery_text_call = " << cache_header_serialise_propery_text_call.as<void*>() << std::endl;
+#endif
+			SOUP_IF_LIKELY (should_setup_optional_conditional_feature(cache_header_serialise_propery_text_call.as<void*>()))
+			{
+				uint8_t detour_bytes[] = {
+					0x4D, 0x8B, 0x5E, 0x08, // mov r11, [r14 + 8]
+					/* 4 */ 0x49, 0xBA, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // movabs r10, (8 bytes)
+					0x41, 0xFF, 0xE2, // jmp r10
+				};
+				auto object_type_insn = cache_header_serialise_propery_text_call.add(5);
+				detour_bytes[0] = object_type_insn.as<uint8_t*>()[0] | 0x04;
+				detour_bytes[2] = object_type_insn.as<uint8_t*>()[2] | 0x10;
+				*(void**)(detour_bytes + 6) = GAME_STRING_FN(object_type_serialise_propery_text_detour);
+				auto detour = memGuard::alloc(sizeof(detour_bytes), memGuard::ACC_RWX);
+				memcpy(detour, detour_bytes, sizeof(detour_bytes));
+				cache_header_serialise_propery_text_hook.detour = detour;
+				cache_header_serialise_propery_text_hook.target = cache_header_serialise_propery_text_call.as<void*>();
+				cache_header_serialise_propery_text_hook.code_cave = Module(nullptr).range.scan(CallsiteHook::getCodeCavePattern()).as<void*>();
+#if LOGGING
+				conout << "cache_header_serialise_propery_text_hook.code_cave = " << cache_header_serialise_propery_text_hook.code_cave << std::endl;
+#endif
+				cache_header_serialise_propery_text_hook.create();
+				cache_header_serialise_propery_text_hook.enable();
+			}
 		}
 	}
 #endif
