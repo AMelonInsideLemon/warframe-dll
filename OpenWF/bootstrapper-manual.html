@@ -117,7 +117,7 @@
 		<li><code>client_http_logging</code> — If true, writes requests to builtin HTTP server to the console.</li>
 		<li><code>client_http_port</code> — Defines the port of the builtin HTTP server. Used for the HTTP Interface and Content Management, documented below.</li>
 		<li><code>disable_overlay</code> — Can be used to disable the overlay, e.g. used to show "OpenWF @ &lt;server&gt;" before login. Default is false on Windows but true on Linux.</li>
-		<li><code>overlay_compatibility_mode</code> — If true, renders the overlay in a more crude way. Default is false on Windows but true on Linux.</li>
+		<li><code>overlay_compatibility_mode</code> — If true, renders the overlay in a more crude way. Default is false, but true on Linux, or if your game version is older than 25.7.0.</li>
 		<li><code>keep_console_open</code> — If true, keeps the console open in the same way as other options that enable logging to the console.</li>
 	</ul>
 	<h2>HTTP Interface</h2>
@@ -130,12 +130,12 @@
 	<p>The Bootstapper generally works in all versions, but certain additional features only support specific versions (for now):</p>
 	<ul>
 		<li>Label Replacements: &gt;= U23</li>
-		<li>Scripting: &gt;= U22.6.1</li>
+		<li>Scripting: &gt;= U14</li>
 		<li>High Damage Numbers Patch: U36-U41.1</li>
 		<li>Pause Always Stops Time: &gt;= U37</li>
 		<li>IRC Authentication: U8-U13.0 and &gt;= U33.6</li>
 		<li>Disable XP-based Level Cap: &gt;= U35.5</li>
-		<li>Overlay: &gt;= U33</li>
+		<li>Overlay: &gt;= U22</li>
 		<li>Content Replacements: U33.6-U39.1</li>
 	</ul>
 	<h2>Tunables</h2>
