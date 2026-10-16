@@ -14,23 +14,19 @@ function parse_metadata_patches(str, filename)
 		end
 		patch = { keys = {}, prefix = "", replacements = {}, substitutions = {}, query_assignments = {}, appends = {} }
 	end
-	local function is_in_patch_scope(linenum, line)
+	local function is_in_patch_scope(linenum, line, is_instruction)
+		local reason
 		if #patch.keys == 0 then
-			print_to_console("[Metadata Patches] Ignoring line/instruction that was not preceeded by one or more paths/targets")
-			print_to_console("[Metadata Patches] - Where: "..(filename ?? "?")..":"..linenum)
-			print_to_console("[Metadata Patches] - What: "..line)
-			return false
+			reason = "Ignoring line/instruction that was not preceeded by one or more paths/targets"
+		elseif is_instruction and patch.new_type then
+			reason = "Ignoring instruction that is not supported for new types"
+		else
+			return true
 		end
-		return true
-	end
-	local function is_supported_for_new_type(linenum, line)
-		if patch.new_type then
-			print_to_console("[Metadata Patches] Ignoring instruction that is not supported for new types")
-			print_to_console("[Metadata Patches] - Where: "..(filename ?? "?")..":"..linenum)
-			print_to_console("[Metadata Patches] - What: "..line)
-			return false
-		end
-		return true
+		print_to_console("[Metadata Patches] "..reason)
+		print_to_console("[Metadata Patches] - Where: "..(filename ?? "?")..":"..linenum)
+		print_to_console("[Metadata Patches] - What: "..line)
+		return false
 	end
 	for linenum, line in str:split("\n") do
 		if line:startswith("+") then
@@ -90,7 +86,7 @@ function parse_metadata_patches(str, filename)
 			end
 		elseif line:startswith("r|") then
 			if sep := line:find("|", 3) then
-				if is_in_patch_scope(linenum, line) and is_supported_for_new_type(linenum, line) then
+				if is_in_patch_scope(linenum, line, true) then
 					patch.replacements[line:sub(3, sep - 1)] = line:sub(sep + 1):rstrip("|")
 				end
 			else
@@ -98,7 +94,7 @@ function parse_metadata_patches(str, filename)
 			end
 		elseif line:startswith("s|") then
 			if sep := line:find("|", 3) then
-				if is_in_patch_scope(linenum, line) and is_supported_for_new_type(linenum, line) then
+				if is_in_patch_scope(linenum, line, true) then
 					patch.substitutions[line:sub(3, sep - 1)] = line:sub(sep + 1):rstrip("|")
 				end
 			else
@@ -106,7 +102,7 @@ function parse_metadata_patches(str, filename)
 			end
 		elseif line:startswith("q|") then
 			if sep := line:find("|", 3) then
-				if is_in_patch_scope(linenum, line) and is_supported_for_new_type(linenum, line) then
+				if is_in_patch_scope(linenum, line, true) then
 					patch.query_assignments[line:sub(3, sep - 1)] = line:sub(sep + 1):rstrip("|")
 				end
 			else
@@ -114,14 +110,14 @@ function parse_metadata_patches(str, filename)
 			end
 		elseif line:startswith("a|") then
 			if sep := line:find("|", 3) then
-				if is_in_patch_scope(linenum, line) and is_supported_for_new_type(linenum, line) then
+				if is_in_patch_scope(linenum, line, true) then
 					patch.appends:insert({ line:sub(3, sep - 1), line:sub(sep + 1):rstrip("|") })
 				end
 			else
 				malformed_line(filename, linenum, line)
 			end
 		elseif line:startswith("$") then
-			if is_in_patch_scope(linenum, line) and is_supported_for_new_type(linenum, line) then
+			if is_in_patch_scope(linenum, line, true) then
 				for line:sub(2):split(";") as flag do
 					if flag == "clear" then
 						patch.discard_original = true
