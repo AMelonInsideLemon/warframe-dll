@@ -1,0 +1,4 @@
+{
+	// "Initialize dictionary: ", last call in the entity loop
+	"42.0.0": "48 8B 4D ? 4C 8D 4D ? 4C 8D 45 ? 49 8B D4 E8", // 2026.03.24.16.59 - 2026.10.15.13.08
+}

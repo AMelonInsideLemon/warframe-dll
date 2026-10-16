@@ -138,6 +138,7 @@
 		<li>Overlay: &gt;= U22</li>
 		<li>Content Replacements: U33.6-U39.1</li>
 		<li>Metadata Patches for Object Header Metadata: &gt;= U22</li>
+		<li>Adding new types via Metadata Patches: &gt;= U42</li>
 	</ul>
 	<h2>Tunables</h2>
 	<p>When connecting to a server, the Bootstrapper requests <code>/custom/tunables.json</code>. The resulting JSON object may provide the following fields:</p>
@@ -191,6 +192,12 @@
 		</li>
 	</ul>
 	<p>If multiple patches affect the same absolute path, they are combined.</p>
+	<p>If a line starts with <code>+</code>, a new type is added and a patch for it is started, e.g. <code>+/Lotus/StoreItems/Powersuits/Stalker/Stalker|/Lotus/Types/Game/StoreItemSpecializations/PowerSuitStoreItem</code>.</p>
+	<ul>
+		<li>The part after <code>|</code> is the parent type, which must already exist.</li>
+		<li>The type is not added if it already exists.</li>
+		<li>The patch provides the metadata of the new type, so instructions (<code>r|</code>, ...) and <code>$</code> flags are ignored in it.</li>
+	</ul>
 	<h2>Content Management</h2>
 	<p>The Bootstrapper handles the client's content requests by consulting the <code>OpenWF/Content/</code> folder, forwarding the request to the configured server in case a file is not found.</p>
 	<p>At minimum, the client requests <code>/0/H.Cache.bin!x_---------------------w</code> (where <code>x</code> depends on the game version), although the Bootstrapper disables this request in versions below U33.6. The Bootstrapper has 3 modes for managing this file:</p>

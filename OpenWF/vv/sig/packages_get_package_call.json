@@ -1,0 +1,4 @@
+{
+	// "Initialize dictionary: ", first direct call in the package loop
+	"42.0.0": "44 8B 45 ? 48 8D 15 ? ? ? ? 45 33 C9 49 8B ? E8", // 2026.03.24.16.59 - 2026.10.15.13.08
+}

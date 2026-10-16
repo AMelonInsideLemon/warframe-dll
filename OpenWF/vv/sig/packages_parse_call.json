@@ -1,0 +1,4 @@
+{
+	// "Loading package cache took " (< U44), "Loaded package cache in " (>= U44)
+	"42.0.0": "4D 8D 85 ? ? ? ? 48 29 44 24 ? 48 8D 55 ? 41 B1 01 49 8B CD E8", // 2026.03.24.16.59 - 2026.10.15.13.08
+}

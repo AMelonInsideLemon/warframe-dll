@@ -449,6 +449,58 @@ static_assert(offsetof(EncryptedString, out_buf) == 0x58);
 #endif
 
 
+#if SOUP_BITS == 64
+struct PackagesEntityV46
+{
+	PAD(0x00, 0x28) uint16_t state; // low 3 bits: kind
+	/* 0x2A */ uint16_t flags;
+};
+
+struct PackagesPackage
+{
+	struct Child
+	{
+		/* 0x00 */ uint32_t name;
+		/* 0x08 */ PackagesEntityV46* entity;
+	};
+
+	PAD(0x00, 0x18) Child* children;
+	/* 0x20 */ uint32_t children_size; // in bytes
+
+	[[nodiscard]] PackagesEntityV46* findChild(uint32_t name) const noexcept
+	{
+		for (uint32_t i = 0; i != children_size / sizeof(Child); ++i)
+		{
+			if (children[i].name == name)
+			{
+				return children[i].entity;
+			}
+		}
+		return nullptr;
+	}
+};
+static_assert(offsetof(PackagesPackage, children_size) == 0x20);
+
+struct PackagesEntityHeaderV46
+{
+	/* 0x00 */ uint32_t name;
+	/* 0x04 */ uint16_t flags;
+	/* 0x06 */ uint8_t kind;
+	/* 0x08 */ uint32_t parent_path;
+	/* 0x0C */ uint32_t parent_name;
+};
+static_assert(sizeof(PackagesEntityHeaderV46) == 0x10);
+
+struct PackagesEntityText
+{
+	/* 0x00 */ const char* data;
+	/* 0x08 */ uint32_t size;
+	/* 0x0C */ uint8_t unk;
+	/* 0x0D */ bool compressed;
+};
+#endif
+
+
 inline Object* regionmgr = nullptr;
 //inline LotusGameRules* gamerules;
 inline Object* flashmgr = nullptr;

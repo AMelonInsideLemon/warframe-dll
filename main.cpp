@@ -1971,6 +1971,7 @@ static void load_metadata_patches()
 {
 	std::lock_guard lock(metadata_patches_mtx);
 	metadata_patches.clear();
+	metadata_new_types.clear();
 
 	auto L = luaL_newstate();
 	owfScript::openLibs(L);
@@ -2043,6 +2044,13 @@ static void load_metadata_patches()
 		return 0;
 	});
 	lua_setglobal(L, "add_append");
+
+	lua_pushcfunction(L, [](lua_State* L) -> int
+	{
+		metadata_new_types.emplace_back(pluto_checkstring(L, 1), pluto_checkstring(L, 2));
+		return 0;
+	});
+	lua_setglobal(L, "add_new_type");
 
 	size_t size;
 	auto data = g_repo.find(soup::joaat::compileTimeHash("OpenWF/helpers/load_metadata_patches.pluto"), size);
@@ -2264,6 +2272,88 @@ static void object_type_serialise_propery_text_field_detour(void* a1, Str* str, 
 }
 
 static CallsiteHook cache_header_serialise_propery_text_hook;
+
+static DetourHook packages_parse_hook;
+static PackagesPackage*(*packages_get_package)(void* registry, const GameString* parent, uint32_t name, uint8_t a4);
+static void*(*packages_add_entity_v46)(void* registry, PackagesPackage* package, const PackagesEntityHeaderV46* header, const PackagesEntityText* text);
+static uint32_t(*get_string_handle)(const char* str, size_t len);
+
+static std::pair<std::string_view, std::string_view> split_type_path(std::string_view path)
+{
+	const auto sep = path.rfind('/') + 1;
+	return { path.substr(0, sep), path.substr(sep) };
+}
+
+static uint32_t packages_get_string_handle(std::string_view str)
+{
+	return get_string_handle(str.data(), str.size());
+}
+
+static PackagesPackage* packages_get_package_by_handle(void* registry, uint32_t package)
+{
+	GameString empty{};
+	empty.shrt.inv_len = sizeof(empty.shrt.data);
+	return packages_get_package(registry, &empty, package, 0);
+}
+
+static const void* packages_find_type(void* registry, const uint32_t* key)
+{
+	return packages_get_package_by_handle(registry, key[0])->findChild(key[1]);
+}
+
+static std::pair<uint16_t, uint8_t> packages_get_flags_and_kind(const void* entity)
+{
+	const auto e = static_cast<const PackagesEntityV46*>(entity);
+	return { e->flags, e->state & 7 };
+}
+
+static void packages_add_type(void* registry, const uint32_t* key, const uint32_t* parent_key, uint16_t flags, uint8_t kind)
+{
+	PackagesEntityHeaderV46 header{
+		.name = key[1],
+		.flags = flags,
+		.kind = kind,
+		.parent_path = parent_key[0],
+		.parent_name = parent_key[1],
+	};
+	PackagesEntityText text{ "\n", 1, 0, false };
+	packages_add_entity_v46(registry, packages_get_package_by_handle(registry, key[0]), &header, &text);
+}
+
+static void packages_add_new_type(void* registry, const std::string& path, const std::string& parent)
+{
+	const auto [package, name] = split_type_path(path);
+	const uint32_t key[] = { packages_get_string_handle(package), packages_get_string_handle(name) };
+	if (packages_find_type(registry, key))
+	{
+		conout << "[Metadata Patches] Can't add " << path << " because it already exists" << std::endl;
+		return;
+	}
+	const auto [parent_package, parent_name] = split_type_path(parent);
+	const uint32_t parent_key[] = { packages_get_string_handle(parent_package), packages_get_string_handle(parent_name) };
+	const auto parent_entity = packages_find_type(registry, parent_key);
+	if (!parent_entity)
+	{
+		conout << "[Metadata Patches] Can't add " << path << " because its parent " << parent << " doesn't exist" << std::endl;
+		return;
+	}
+	const auto [parent_flags, kind] = packages_get_flags_and_kind(parent_entity);
+	// Types with children have 0x200 set, types without have 0x1 set.
+	const auto flags = static_cast<uint16_t>((parent_flags & ~0x200) | 1);
+	packages_add_type(registry, key, parent_key, flags, kind);
+}
+
+static uint64_t packages_parse_detour(void* registry, void* readers, void* a3, uint8_t a4)
+{
+	const auto ret = reinterpret_cast<decltype(&packages_parse_detour)>(packages_parse_hook.original)(registry, readers, a3, a4);
+
+	for (const auto& [path, parent] : metadata_new_types)
+	{
+		packages_add_new_type(registry, path, parent);
+	}
+
+	return ret;
+}
 #endif
 
 
@@ -4339,6 +4429,40 @@ static SOUP_FORCEINLINE void create_all_hooks()
 #endif
 				cache_header_serialise_propery_text_hook.create();
 				cache_header_serialise_propery_text_hook.enable();
+			}
+		}
+
+		if (auto sig_inst = g_repo.getVersionedPattern(soup::joaat::compileTimeHash("OpenWF/vv/sig/packages_parse_call.json"), game_version); !sig_inst.bytes.empty())
+		{
+			auto find_sig = g_repo.getVersionedPattern(soup::joaat::compileTimeHash("OpenWF/vv/sig/packages_get_package_call.json"), game_version);
+			auto add_entity_sig = g_repo.getVersionedPattern(soup::joaat::compileTimeHash("OpenWF/vv/sig/packages_add_entity_call.json"), game_version);
+			auto get_string_handle_sig = g_repo.getVersionedPattern(soup::joaat::compileTimeHash("OpenWF/vv/sig/get_string_handle_call.json"), game_version);
+			auto packages_parse_call = Module(nullptr).range.scan(sig_inst);
+			auto packages_find_call = Module(nullptr).range.scan(find_sig);
+			auto packages_add_entity_call = Module(nullptr).range.scan(add_entity_sig);
+			auto get_string_handle_call = Module(nullptr).range.scan(get_string_handle_sig);
+#if LOGGING
+			conout << "packages_parse_call = " << packages_parse_call.as<void*>() << std::endl;
+			conout << "packages_find_call = " << packages_find_call.as<void*>() << std::endl;
+			conout << "packages_add_entity_call = " << packages_add_entity_call.as<void*>() << std::endl;
+			conout << "get_string_handle_call = " << get_string_handle_call.as<void*>() << std::endl;
+#endif
+			SOUP_IF_LIKELY (should_setup_optional_conditional_feature(packages_parse_call.as<void*>())
+				&& should_setup_optional_conditional_feature(packages_find_call.as<void*>())
+				&& should_setup_optional_conditional_feature(packages_add_entity_call.as<void*>())
+				&& should_setup_optional_conditional_feature(get_string_handle_call.as<void*>())
+				)
+			{
+				auto find = packages_find_call.add(find_sig.bytes.size()).rip();
+				auto add_entity = packages_add_entity_call.add(add_entity_sig.bytes.size()).rip();
+				auto string_handle = get_string_handle_call.add(get_string_handle_sig.bytes.size()).rip();
+				packages_get_package = find.as<decltype(packages_get_package)>();
+				packages_add_entity_v46 = add_entity.as<decltype(packages_add_entity_v46)>();
+				get_string_handle = string_handle.as<decltype(get_string_handle)>();
+				packages_parse_hook.detour = reinterpret_cast<void*>(&packages_parse_detour);
+				packages_parse_hook.target = packages_parse_call.add(sig_inst.bytes.size()).rip().as<void*>();
+				packages_parse_hook.create();
+				packages_parse_hook.enable();
 			}
 		}
 	}
