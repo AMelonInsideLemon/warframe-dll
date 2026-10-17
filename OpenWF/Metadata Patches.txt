@@ -2,7 +2,7 @@
 #
 # An example patch that changes "Fever Strike" to be called "Saryn Strike" and replaces Toxin with Corrosive:
 #
-#/Lotus/Upgrades/Mods/Melee/WeaponToxinDamageMod
+#>/Lotus/Upgrades/Mods/Melee/WeaponToxinDamageMod
 #    LocalizeTag=Saryn Strike
 #    r|DT_POISON|DT_CORROSIVE
 #    q|Upgrades.0.LocTag|/Lotus/Language/Upgrades/WeaponCorrosiveDamage
