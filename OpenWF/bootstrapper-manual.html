@@ -191,6 +191,13 @@
 		<li>Lines starting with <code>+</code> create a new object type and start a patch for it, e.g. <code>+/Lotus/StoreItems/Powersuits/Stalker/Stalker|/Lotus/Types/Game/StoreItemSpecializations/PowerSuitStoreItem</code>. The part after <code>|</code> is the parent type, which must already exist.</li>
 	</ul>
 	<p>If multiple patches affect the same absolute path, they are combined.</p>
+	<p>For patches targeting multiple versions, a preprocessor is available:</p>
+	<ul>
+		<li><code>$if</code> starts a conditional block and sets its activation state with a simple Lua expression, e.g. <code>can_add_new_types()</code>, <code>compareversions(owf_get_build_version(), "2026.06.16.07.07") >= 0</code></li>
+		<li><code>$elseif</code> reevaluates the activation status of the current conditional block with another Lua expression</li>
+		<li><code>$else</code> inverts the activation status of the current conditional block</li>
+		<li><code>$endif</code> ends a conditional block</li>
+	</ul>
 	<h2>Content Management</h2>
 	<p>The Bootstrapper handles the client's content requests by consulting the <code>OpenWF/Content/</code> folder, forwarding the request to the configured server in case a file is not found.</p>
 	<p>At minimum, the client requests <code>/0/H.Cache.bin!x_---------------------w</code> (where <code>x</code> depends on the game version), although the Bootstrapper disables this request in versions below U33.6. The Bootstrapper has 3 modes for managing this file:</p>

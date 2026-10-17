@@ -4,10 +4,25 @@ local function malformed_line(filename, linenum, line)
 	print_to_console("[Metadata Patches] - What: "..line)
 end
 
+local function evaluate_condition(filename, linenum, line, cond)
+	local ok, ret = load("return "..cond, "condition", "t", $object(can_add_new_types, compareversions, owf_get_build_version))
+	if ok then
+		ok, ret = pcall(ok)
+		if ok then
+			return ret
+		end
+	end
+	print_to_console("[Metadata Patches] $if condition errored: "..ret)
+	print_to_console("[Metadata Patches] - Where: "..(filename ?? "?")..":"..linenum)
+	print_to_console("[Metadata Patches] - What: "..line)
+	return false
+end
+
 function parse_metadata_patches(str, filename)
 	local patches = {}
 	local patch = { keys = {}, prefix = "", replacements = {}, substitutions = {}, query_assignments = {}, appends = {} }
 	local ampersand = false
+	local conditions = { true }
 	local function delimit_patch()
 		if #patch.keys ~= 0 then
 			patches:insert(patch)
@@ -29,6 +44,41 @@ function parse_metadata_patches(str, filename)
 		return false
 	end
 	for linenum, line in str:split("\n") do
+		if line:startswith("$if ") then
+			conditions:insert(evaluate_condition(filename, linenum, line, line:sub(5)))
+			continue
+		end
+		if line:startswith("$elseif ") then
+			if #conditions == 1 then
+				print_to_console("[Metadata Patches] $elseif without matching $if")
+				print_to_console("[Metadata Patches] - Where: "..(filename ?? "?")..":"..linenum)
+			else
+				conditions[#conditions] = evaluate_condition(filename, linenum, line, line:sub(9))
+			end
+			continue
+		end
+		if line:startswith("$else") then
+			if #conditions == 1 then
+				print_to_console("[Metadata Patches] $else without matching $if")
+				print_to_console("[Metadata Patches] - Where: "..(filename ?? "?")..":"..linenum)
+			else
+				conditions[#conditions] = not conditions[#conditions]
+			end
+			continue
+		end
+		if line:startswith("$endif") then
+			if #conditions == 1 then
+				print_to_console("[Metadata Patches] $endif without matching $if")
+				print_to_console("[Metadata Patches] - Where: "..(filename ?? "?")..":"..linenum)
+			else
+				conditions:remove()
+			end
+			continue
+		end
+		if not conditions[#conditions] then
+			continue
+		end
+
 		if line:startswith("/") then
 			if ampersand then
 				ampersand = false

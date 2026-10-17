@@ -1966,6 +1966,8 @@ static void check_string_substitutions_detour(void* a1, Str* str, void* substitu
 
 
 #if METADATA_PATCHES && SOUP_BITS == 64
+static DetourHook packages_parse_hook;
+
 static MetadataPatch* current_patch = nullptr;
 static void load_metadata_patches()
 {
@@ -2044,6 +2046,13 @@ static void load_metadata_patches()
 		return 0;
 	});
 	lua_setglobal(L, "add_append");
+
+	lua_pushcfunction(L, [](lua_State* L) -> int
+	{
+		lua_pushboolean(L, packages_parse_hook.isCreated());
+		return 1;
+	});
+	lua_setglobal(L, "can_add_new_types");
 
 	lua_pushcfunction(L, [](lua_State* L) -> int
 	{
@@ -2273,7 +2282,6 @@ static void object_type_serialise_propery_text_field_detour(void* a1, Str* str, 
 
 static CallsiteHook cache_header_serialise_propery_text_hook;
 
-static DetourHook packages_parse_hook;
 static PackagesPackage*(*packages_get_package)(void* registry, const GameString* parent, uint32_t name, uint8_t a4);
 static void*(*packages_add_entity_v46)(void* registry, PackagesPackage* package, const PackagesEntityHeaderV46* header, const PackagesEntityText* text);
 static uint32_t(*get_string_handle)(const char* str, size_t len);
