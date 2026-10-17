@@ -188,14 +188,9 @@
 				<li><code>debug</code> enables some extra logging when applying query assignments.</li>
 			</ul>
 		</li>
+		<li>Lines starting with <code>+</code> create a new object type and start a patch for it, e.g. <code>+/Lotus/StoreItems/Powersuits/Stalker/Stalker|/Lotus/Types/Game/StoreItemSpecializations/PowerSuitStoreItem</code>. The part after <code>|</code> is the parent type, which must already exist.</li>
 	</ul>
 	<p>If multiple patches affect the same absolute path, they are combined.</p>
-	<p>If a line starts with <code>+</code>, a new type is added and a patch for it is started, e.g. <code>+/Lotus/StoreItems/Powersuits/Stalker/Stalker|/Lotus/Types/Game/StoreItemSpecializations/PowerSuitStoreItem</code>.</p>
-	<ul>
-		<li>The part after <code>|</code> is the parent type, which must already exist.</li>
-		<li>The type is not added if it already exists.</li>
-		<li>The patch provides the metadata of the new type, so instructions (<code>r|</code>, ...) and <code>$</code> flags are ignored in it.</li>
-	</ul>
 	<h2>Content Management</h2>
 	<p>The Bootstrapper handles the client's content requests by consulting the <code>OpenWF/Content/</code> folder, forwarding the request to the configured server in case a file is not found.</p>
 	<p>At minimum, the client requests <code>/0/H.Cache.bin!x_---------------------w</code> (where <code>x</code> depends on the game version), although the Bootstrapper disables this request in versions below U33.6. The Bootstrapper has 3 modes for managing this file:</p>
