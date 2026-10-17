@@ -3757,7 +3757,7 @@ local t_functions = {
 		ivkr_push_string("ShowNotification")
 		ivkr_gettable(-2)
 
-		if icon == nil and OWF_GAME_VERSION >= 430000 then
+		if icon == nil and compareversions(owf_get_build_version(), "2026.06.16.07.07") >= 0 then
 			icon = "DroneComplete" -- U43 requires an icon or it crashes directly
 		end
 		ivkr_push_any(text)

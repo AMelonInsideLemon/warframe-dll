@@ -2184,7 +2184,6 @@ owfScript::owfScript()
 		std::lock_guard lock(g_repo_mtx);
 
 		OWF_SET_GLOBAL_INT(L, "OWF_CLIENT_HOTFIX", g_repo.hotfix);
-		OWF_SET_GLOBAL_INT(L, "OWF_GAME_VERSION", game_version);
 
 		size_t size;
 		auto data = g_repo.find(soup::joaat::compileTimeHash("OpenWF/runtime.pluto"), size);
