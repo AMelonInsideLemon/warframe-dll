@@ -24,4 +24,5 @@ struct MetadataPatch
 };
 inline soup::Mutex metadata_patches_mtx;
 inline std::unordered_map<uint32_t, MetadataPatch> metadata_patches;
+inline std::vector<std::pair<std::string, std::string>> metadata_new_types;
 #endif
