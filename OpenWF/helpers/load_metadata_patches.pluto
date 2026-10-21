@@ -22,7 +22,7 @@ function parse_metadata_patches(str, filename)
 	local patches = {}
 	local patch = { keys = {}, prefix = "", replacements = {}, substitutions = {}, query_assignments = {}, appends = {} }
 	local ampersand = false
-	local conditions = { true }
+	local conditions = { { active = true, matched = true } }
 	local function delimit_patch()
 		if #patch.keys ~= 0 then
 			patches:insert(patch)
@@ -45,7 +45,8 @@ function parse_metadata_patches(str, filename)
 	end
 	for linenum, line in str:split("\n") do
 		if line:startswith("$if ") then
-			conditions:insert(evaluate_condition(filename, linenum, line, line:sub(5)))
+			local active = conditions[#conditions].active and evaluate_condition(filename, linenum, line, line:sub(5))
+			conditions:insert({ active = active, matched = active })
 			continue
 		end
 		if line:startswith("$elseif ") then
@@ -53,7 +54,9 @@ function parse_metadata_patches(str, filename)
 				print_to_console("[Metadata Patches] $elseif without matching $if")
 				print_to_console("[Metadata Patches] - Where: "..(filename ?? "?")..":"..linenum)
 			else
-				conditions[#conditions] = evaluate_condition(filename, linenum, line, line:sub(9))
+				local cond = conditions[#conditions]
+				cond.active = not cond.matched and conditions[#conditions - 1].active and evaluate_condition(filename, linenum, line, line:sub(9))
+				cond.matched = cond.matched or cond.active
 			end
 			continue
 		end
@@ -62,7 +65,9 @@ function parse_metadata_patches(str, filename)
 				print_to_console("[Metadata Patches] $else without matching $if")
 				print_to_console("[Metadata Patches] - Where: "..(filename ?? "?")..":"..linenum)
 			else
-				conditions[#conditions] = not conditions[#conditions]
+				local cond = conditions[#conditions]
+				cond.active = not cond.matched and conditions[#conditions - 1].active
+				cond.matched = true
 			end
 			continue
 		end
@@ -75,7 +80,7 @@ function parse_metadata_patches(str, filename)
 			end
 			continue
 		end
-		if not conditions[#conditions] then
+		if not conditions[#conditions].active then
 			continue
 		end
 
